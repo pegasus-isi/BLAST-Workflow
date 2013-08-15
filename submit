@@ -1,0 +1,73 @@
+#!/bin/bash
+
+set -e
+
+PROJECT=$1
+QUERIES_FILE=$2
+if [ "x$PROJECT" = "x" -o "x$QUERIES_FILE" = "x" ]; then
+    echo "Please specify the project id to charge the workflow usage to," 2>&1
+    echo "and the file containing the queries. Example:" 2>&1
+    echo "  ./submit TG-ABC123 /some/path/to/queries.txt" 2>&1
+    exit 1
+fi
+
+TOP_DIR=`pwd`
+
+# unique directory for this run
+RUN_ID=`/bin/date +'%F_%H%M%S'`
+RUN_DIR=/local-scratch/$USER/workflows/blast-$RUN_ID
+mkdir -p $RUN_DIR
+cd $RUN_DIR
+
+echo " ** "
+echo " ** Run dir is $RUN_DIR"
+echo " ** "
+
+# move to the run dir for dax generation
+cp -r $TOP_DIR/* $RUN_DIR/
+
+# split the queries
+cd $RUN_DIR/
+mkdir inputs
+cd inputs
+../split_fasta.pl $QUERIES_FILE
+
+# generate the dax
+cd $RUN_DIR/
+export PYTHONPATH=`pegasus-config --python`
+./dax-generator.py
+
+# create the site catalog
+cat >sites.xml <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<sitecatalog xmlns="http://pegasus.isi.edu/schema/sitecatalog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pegasus.isi.edu/schema/sitecatalog http://pegasus.isi.edu/schema/sc-4.0.xsd" version="4.0">
+
+    <site handle="local" arch="x86_64">
+        <directory type="shared-scratch" path="$RUN_DIR/scratch">
+            <file-server operation="all" url="file://$RUN_DIR/scratch"/>
+        </directory>
+        <directory type="local-storage" path="$RUN_DIR/outputs">
+            <file-server operation="all" url="file://$RUN_DIR/outputs"/>
+        </directory>
+    </site>
+
+    <site handle="condorpool" arch="x86_64">
+        <profile namespace="pegasus" key="style" >condor</profile>
+        <profile namespace="condor" key="universe" >vanilla</profile>
+        <profile namespace="condor" key="+ProjectName" >"$PROJECT"</profile>
+    </site>
+
+</sitecatalog>
+EOF
+
+# plan and submit the  workflow
+pegasus-plan \
+    --conf pegasusrc \
+    --sites condorpool \
+    --output-site local \
+    --dir $RUN_DIR/run \
+    --cluster horizontal \
+    --dax dax.xml \
+    --submit
+
+
