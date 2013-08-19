@@ -29,8 +29,9 @@ cp -r $TOP_DIR/* $RUN_DIR/
 # split the queries
 cd $RUN_DIR/
 mkdir inputs
-cd inputs
-../split_fasta.pl $QUERIES_FILE
+#cd inputs
+#../split_fasta.pl $QUERIES_FILE
+./split.py $QUERIES_FILE inputs
 
 # generate the dax
 cd $RUN_DIR/
