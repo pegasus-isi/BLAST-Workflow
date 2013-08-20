@@ -21,12 +21,16 @@ dax = ADAG("blast")
     
 # notifcations on state changes for the dax
 dax.invoke("all", "/usr/share/pegasus/notification/email")
+
+reqs = "(HAS_BLAST =?= True)"
+reqs += " && (TARGET.GLIDEIN_ResourceName =!= \"AGLT2\")"
+reqs += " && (TARGET.GLIDEIN_ResourceName =!= \"NYSGRID_CORNELL_NYS1\")"
     
 # Add executables to the DAX-level replica catalog
 wrapper = Executable(name="blast-wrapper", arch="x86_64", installed=False)
 wrapper.addPFN(PFN("file://" + base_dir + "/blast-wrapper", "local"))
 wrapper.addProfile(Profile(Namespace.PEGASUS, "clusters.size", tasks_per_job))
-wrapper.addProfile(Profile(Namespace.CONDOR, "requirements", "(HAS_BLAST =?= True)"))
+wrapper.addProfile(Profile(Namespace.CONDOR, "requirements", reqs))
 dax.addExecutable(wrapper)
 
 for in_name in os.listdir(inputs_dir):

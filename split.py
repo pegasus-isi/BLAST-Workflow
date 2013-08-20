@@ -29,7 +29,7 @@ input.close()
 block = {}
 count = 0
 for query in queries:
-    outfile = open(outdir+"/"+str(count)+".fasta", "w")
+    outfile = open("%s/%07d.fasta" % (outdir, count), "w")
     outfile.write(query[1])
     outfile.close()
     count+=1
