@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+OUTFILE="$1"
+INFILES="${@:2}"
+
+echo "cat $INFILES >$OUTFILE"
+cat $INFILES >$OUTFILE

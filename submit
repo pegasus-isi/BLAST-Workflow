@@ -11,6 +11,12 @@ if [ "x$PROJECT" = "x" -o "x$QUERIES_FILE" = "x" ]; then
     exit 1
 fi
 
+# check that we can charge to the project
+if ! (grep "^$PROJECT:" /etc/xsede/projects | grep "$USER") >/dev/null 2>&1; then
+    echo "You are not a member of the $PROJECT - please specify a valid project"
+    exit 1
+fi
+
 TOP_DIR=`pwd`
 
 # unique directory for this run
@@ -19,18 +25,12 @@ RUN_DIR=/local-scratch/$USER/workflows/blast-$RUN_ID
 mkdir -p $RUN_DIR
 cd $RUN_DIR
 
-echo " ** "
-echo " ** Run dir is $RUN_DIR"
-echo " ** "
-
 # move to the run dir for dax generation
 cp -r $TOP_DIR/* $RUN_DIR/
 
 # split the queries
 cd $RUN_DIR/
 mkdir inputs
-#cd inputs
-#../split_fasta.pl $QUERIES_FILE
 ./split.py $QUERIES_FILE inputs
 
 # generate the dax
@@ -61,13 +61,16 @@ cat >sites.xml <<EOF
 </sitecatalog>
 EOF
 
+echo " ** "
+echo " ** Outputs will show up in $RUN_DIR/outputs/"
+echo " ** "
+
 # plan and submit the  workflow
 pegasus-plan \
     --conf pegasusrc \
     --sites condorpool \
     --output-site local \
     --dir $RUN_DIR/run \
-    --cluster horizontal \
     --dax dax.xml \
     --submit
 
