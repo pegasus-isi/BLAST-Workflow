@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -e
+
+
+function update_status
+{
+    STATUS=`pegasus-status --noqueue | tail -1 | sed 's/[:\(\)]/ /g'| awk '{print $5}'`
+ 
+    TS=`date +'%F %R'`
+    echo "$TS  - Status: $STATUS"
+}
+
+
+./submit $1 $2 2>&1 | tee submit.log
+
+WF_DIR=`grep pegasus-remove submit.log | awk '{print $5}'`
+cd $WF_DIR
+if [ ! -e braindump.txt ]; then
+    echo "braindump.txt was not found in this directory. Planner probably failed!" 1>&2
+    exit 1
+fi
+
+STATUS="Running"
+while [ "X$STATUS" = "XRunning" ]; do
+    sleep 5m
+    update_status
+done
+
+# all done - should we show statitics or analyzer?
+if [ "X$STATUS" = "XSuccess" ]; then
+    pegasus-statistics
+    exit 0
+else
+    pegasus-analyzer
+    exit 1
+fi
+
